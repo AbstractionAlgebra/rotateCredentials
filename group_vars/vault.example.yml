@@ -1,0 +1,23 @@
+---
+# Copy this structure into an encrypted Ansible Vault file.
+# Example values are intentionally non-secret and must be replaced.
+root_credential:
+  current: "CurrentRootPwd1!"
+  new: "NewRootPwdValue1!"
+  prior: "PriorRootPwdValue1!"
+  current_changed_at: "2026-02-24"
+  prior_changed_at: "2025-12-26"
+
+grub_credential:
+  current: "CurrentGrubPwd1!"
+  new: "NewGrubPwdValue1!"
+  prior: "PriorGrubPwdValue1!"
+  current_changed_at: "2026-02-24"
+  prior_changed_at: "2025-12-26"
+
+luks_credential:
+  current: "CurrentLuksPwd1!"
+  new: "NewLuksPwdValue1!"
+  prior: "PriorLuksPwdValue1!"
+  current_changed_at: "2026-02-24"
+  prior_changed_at: "2025-12-26"
