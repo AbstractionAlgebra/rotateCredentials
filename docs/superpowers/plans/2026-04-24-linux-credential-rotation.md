@@ -67,7 +67,10 @@ Write this exact file:
 
 ```yaml
 ---
-# Copy this structure into an encrypted Ansible Vault file.
+# Copy this structure into an encrypted vars file loaded explicitly with
+# --extra-vars @path/to/vault.yml, or by a playbook/inventory vars_files
+# mechanism once that is documented by later tasks. This example does not
+# auto-load from group_vars.
 # Example values are intentionally non-secret and must be replaced.
 root_credential:
   current: "CurrentRootPwd1!"
