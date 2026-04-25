@@ -7,7 +7,7 @@ sanitized per-host summary without exposing credential values.
 
 ## Supported Managed Hosts
 
-- RHEL 8
+- RHEL 8.10
 - RHEL 9
 - Ubuntu 22.04
 - Ubuntu 24.04
@@ -168,5 +168,6 @@ ansible-playbook --syntax-check rotate_credentials.yml \
 ```
 
 For destructive validation of GRUB and LUKS behavior, use only disposable RHEL
-or Ubuntu virtual machines with snapshots and encrypted disks. Do not validate
-bootloader or disk-encryption credential rotation against irreplaceable systems.
+8.10, RHEL 9, or Ubuntu virtual machines with snapshots and encrypted disks. Do
+not validate bootloader or disk-encryption credential rotation against
+irreplaceable systems.

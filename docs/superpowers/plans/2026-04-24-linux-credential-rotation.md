@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build an Ansible playbook and three roles that rotate root, GRUB, and active LUKS credentials on RHEL 8/9 and Ubuntu 22.04/24.04 using structured vaulted credential records.
+**Goal:** Build an Ansible playbook and three roles that rotate root, GRUB, and active LUKS credentials on RHEL 8.10/9 and Ubuntu 22.04/24.04 using structured vaulted credential records.
 
 **Architecture:** `rotate_credentials.yml` owns orchestration, preflight checks, role enablement, tags, and final summaries. Each role owns one credential domain and appends sanitized status, warning, or failure messages to shared summary lists without printing secret values.
 
@@ -212,7 +212,8 @@ Write this exact file:
           - >
             (
               ansible_facts.os_family == 'RedHat' and
-              ansible_facts.distribution_major_version in ['8', '9']
+              ansible_facts.distribution_version == '8.10' or
+              ansible_facts.distribution_major_version == '9'
             ) or
             (
               ansible_facts.distribution == 'Ubuntu' and
@@ -221,7 +222,7 @@ Write this exact file:
         fail_msg: >-
           Unsupported OS {{ ansible_facts.distribution }}
           {{ ansible_facts.distribution_version }} on {{ inventory_hostname }}.
-          Supported targets are RHEL 8, RHEL 9, Ubuntu 22.04, and Ubuntu 24.04.
+          Supported targets are RHEL 8.10, RHEL 9, Ubuntu 22.04, and Ubuntu 24.04.
         success_msg: "Supported OS detected on {{ inventory_hostname }}."
       tags:
         - always
@@ -636,7 +637,7 @@ Ansible playbook and roles for rotating Linux root, GRUB, and active LUKS full-d
 
 ## Supported Hosts
 
-- RHEL 8
+- RHEL 8.10
 - RHEL 9
 - Ubuntu 22.04
 - Ubuntu 24.04
@@ -703,7 +704,7 @@ Run syntax checks before using the playbook:
 ansible-playbook rotate_credentials.yml --syntax-check
 ```
 
-Run destructive GRUB and LUKS validation only in disposable RHEL 8, RHEL 9, Ubuntu 22.04, and Ubuntu 24.04 VMs with snapshots and encrypted disks.
+Run destructive GRUB and LUKS validation only in disposable RHEL 8.10, RHEL 9, Ubuntu 22.04, and Ubuntu 24.04 VMs with snapshots and encrypted disks.
 ```
 
 - [ ] **Step 2: Run syntax check**

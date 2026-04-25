@@ -4,7 +4,7 @@ Date: 2026-04-24
 
 ## Purpose
 
-Create a simple Ansible project that rotates Linux root, GRUB, and LUKS full-disk-encryption credentials on supported hardened systems. The target platforms are RHEL 8, RHEL 9, Ubuntu 22.04, and Ubuntu 24.04, including systems commonly running FIPS kernels and STIG security settings.
+Create a simple Ansible project that rotates Linux root, GRUB, and LUKS full-disk-encryption credentials on supported hardened systems. The target platforms are RHEL 8.10, RHEL 9, Ubuntu 22.04, and Ubuntu 24.04, including systems commonly running FIPS kernels and STIG security settings.
 
 The project will provide one top-level playbook that calls three focused roles. Operators will provide credential data through Ansible Vault. The playbook will validate new credential complexity, perform enabled rotations, report failures clearly, and print post-run vault update instructions.
 
@@ -97,7 +97,7 @@ Automatic vault rewriting is out of scope.
 
 Before rotation, the playbook will validate:
 
-- the target OS is RHEL 8, RHEL 9, Ubuntu 22.04, or Ubuntu 24.04
+- the target OS is RHEL 8.10, RHEL 9, Ubuntu 22.04, or Ubuntu 24.04
 - privilege escalation is available
 - required vaulted records and fields are present for enabled rotations
 - enabled new passwords satisfy complexity rules
@@ -183,7 +183,7 @@ Role validation should stay practical:
 
 - root role checks should verify intended account and aging behavior, including warning behavior when max-days is corrected
 - GRUB and LUKS task structure should be check-mode-friendly where possible
-- destructive GRUB and LUKS behavior should be validated in disposable RHEL 8, RHEL 9, Ubuntu 22.04, and Ubuntu 24.04 VMs with snapshots and encrypted disks
+- destructive GRUB and LUKS behavior should be validated in disposable RHEL 8.10, RHEL 9, Ubuntu 22.04, and Ubuntu 24.04 VMs with snapshots and encrypted disks
 
 Local CI should not pretend to safely mutate bootloader configuration or disk encryption on the development host.
 
@@ -196,4 +196,4 @@ Local CI should not pretend to safely mutate bootloader configuration or disk en
 - multi-user password rotation
 - installing missing packages on hardened hosts
 - global password policy changes
-- support for operating systems outside RHEL 8, RHEL 9, Ubuntu 22.04, and Ubuntu 24.04
+- support for operating systems outside RHEL 8.10, RHEL 9, Ubuntu 22.04, and Ubuntu 24.04
