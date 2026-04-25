@@ -1,0 +1,9 @@
+---
+rotate_root_password: true
+rotate_grub_password: true
+rotate_luks_password: true
+
+rotation_successes: []
+rotation_warnings: []
+rotation_failures: []
+rotation_skips: []
