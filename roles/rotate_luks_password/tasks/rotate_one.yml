@@ -8,6 +8,7 @@
           - luksAddKey
           - "{{ luks_device.device }}"
         stdin: "{{ luks_credential.current }}\n{{ luks_credential.new }}\n{{ luks_credential.new }}\n"
+      changed_when: true
       no_log: true
 
     - name: Verify new LUKS passphrase for {{ luks_device.device }}
@@ -28,6 +29,7 @@
           - luksRemoveKey
           - "{{ luks_device.device }}"
         stdin: "{{ luks_credential.current }}\n"
+      changed_when: true
       no_log: true
 
     - name: Record LUKS rotation success for {{ luks_device.mapping }}
