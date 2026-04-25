@@ -130,8 +130,11 @@ active, and preflight checks are scoped to those active rotations.
 
 ## Post-Run Vault Maintenance
 
-Update the encrypted vault record only after a host has completed every enabled
-rotation successfully:
+Promote vault values only after the systems that use that record have completed
+every enabled rotation successfully. Immediate promotion is safe only for a
+host-specific credential record whose host fully succeeded. For shared
+credential records, promote only after every host sharing that record has fully
+succeeded.
 
 - `prior = old current`
 - `prior_changed_at = old current_changed_at`
@@ -139,9 +142,9 @@ rotation successfully:
 - `current_changed_at = rotation date`
 - `new = next planned password`
 
-Keep failed hosts under investigation before promoting values in the vault. A
-host that fails after a partial rotation may need host-specific recovery before
-its vault record is advanced.
+Keep failed hosts under investigation before promoting values in the vault.
+Failed hosts must keep using the credential state that matches their actual
+system state until they are resolved.
 
 The final playbook output is sanitized. It reports successes, warnings, skips,
 and summarized failures without printing `current`, `new`, or `prior`
