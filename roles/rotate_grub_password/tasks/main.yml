@@ -1,0 +1,110 @@
+---
+- name: Rotate GRUB password
+  block:
+    - name: Determine GRUB password rotation commands and files
+      ansible.builtin.set_fact:
+        grub_password_hash_command: >-
+          {{
+            'grub2-mkpasswd-pbkdf2'
+            if ansible_facts.os_family == 'RedHat'
+            else 'grub-mkpasswd-pbkdf2'
+          }}
+        grub_auth_file: >-
+          {{
+            '/etc/grub.d/01_users'
+            if ansible_facts.os_family == 'RedHat'
+            else '/etc/grub.d/40_custom'
+          }}
+        grub_regenerate_command: >-
+          {{
+            'grub2-mkconfig -o /boot/grub2/grub.cfg'
+            if ansible_facts.os_family == 'RedHat'
+            else 'update-grub'
+          }}
+
+    - name: Generate GRUB PBKDF2 password hash
+      ansible.builtin.command:
+        cmd: "{{ grub_password_hash_command }}"
+        stdin: "{{ grub_credential.new }}\n{{ grub_credential.new }}\n"
+      changed_when: false
+      register: grub_password_hash_output
+      no_log: true
+
+    - name: Extract GRUB PBKDF2 password hash
+      ansible.builtin.set_fact:
+        grub_password_hash: >-
+          {{
+            grub_password_hash_output.stdout |
+            regex_search('grub\\.pbkdf2\\.sha512\\.[^\\s]+')
+          }}
+      no_log: true
+
+    - name: Validate GRUB PBKDF2 password hash was generated
+      ansible.builtin.assert:
+        that:
+          - grub_password_hash is defined
+          - grub_password_hash | length > 0
+        fail_msg: >-
+          GRUB password hash generation did not return a PBKDF2 SHA-512 hash.
+      no_log: true
+
+    - name: Write RHEL GRUB authentication script
+      ansible.builtin.copy:
+        dest: "{{ grub_auth_file }}"
+        owner: root
+        group: root
+        mode: "0700"
+        content: |
+          #!/bin/sh -e
+          cat <<'EOF'
+          set superusers="root"
+          password_pbkdf2 root {{ grub_password_hash }}
+          EOF
+      when: ansible_facts.os_family == 'RedHat'
+      no_log: true
+
+    - name: Write Ubuntu GRUB authentication script
+      ansible.builtin.copy:
+        dest: "{{ grub_auth_file }}"
+        owner: root
+        group: root
+        mode: "0700"
+        content: |
+          #!/bin/sh
+          exec tail -n +3 "$0"
+          set superusers="root"
+          password_pbkdf2 root {{ grub_password_hash }}
+      when: ansible_facts.distribution == 'Ubuntu'
+      no_log: true
+
+    - name: Regenerate GRUB configuration
+      ansible.builtin.command:
+        cmd: "{{ grub_regenerate_command }}"
+      changed_when: true
+      no_log: true
+
+    - name: Record GRUB password rotation success
+      ansible.builtin.set_fact:
+        rotation_successes: >-
+          {{
+            rotation_successes +
+            [
+              'GRUB password rotated and boot configuration regenerated using ' ~
+              grub_auth_file
+            ]
+          }}
+
+  rescue:
+    - name: Record GRUB password rotation failure
+      ansible.builtin.set_fact:
+        rotation_failures: >-
+          {{
+            rotation_failures +
+            [
+              'GRUB password rotation failed during task: ' ~
+              (ansible_failed_task.name | default('unknown GRUB password task')) ~
+              '. Suggested action: verify the GRUB password utility, ' ~
+              '/etc/grub.d permissions, and boot configuration regeneration ' ~
+              'command on the host, then rerun the GRUB rotation.'
+            ]
+          }}
