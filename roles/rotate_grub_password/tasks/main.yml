@@ -1,6 +1,11 @@
 ---
 - name: Rotate GRUB password
   block:
+    - name: Detect EFI firmware
+      ansible.builtin.stat:
+        path: /sys/firmware/efi
+      register: grub_efi_firmware
+
     - name: Determine GRUB password rotation commands and files
       ansible.builtin.set_fact:
         grub_password_hash_command: >-
@@ -9,15 +14,19 @@
             if ansible_facts.os_family == 'RedHat'
             else 'grub-mkpasswd-pbkdf2'
           }}
-        grub_auth_file: >-
-          {{
-            '/etc/grub.d/01_users'
-            if ansible_facts.os_family == 'RedHat'
-            else '/etc/grub.d/40_custom'
-          }}
+        grub_auth_file: /etc/grub.d/01_users
+        grub_config_file: >-
+          {{ '/boot/efi/EFI/redhat/grub.cfg'
+             if ansible_facts.os_family == 'RedHat' and
+                ansible_facts.distribution_major_version == '8' and
+                grub_efi_firmware.stat.exists
+             else '/boot/grub2/grub.cfg' }}
+
+    - name: Determine GRUB regeneration command
+      ansible.builtin.set_fact:
         grub_regenerate_command: >-
           {{
-            'grub2-mkconfig -o /boot/grub2/grub.cfg'
+            'grub2-mkconfig -o ' ~ grub_config_file
             if ansible_facts.os_family == 'RedHat'
             else 'update-grub'
           }}
@@ -48,7 +57,7 @@
           GRUB password hash generation did not return a PBKDF2 SHA-512 hash.
       no_log: true
 
-    - name: Write RHEL GRUB authentication script
+    - name: Ensure GRUB authentication script exists
       ansible.builtin.copy:
         dest: "{{ grub_auth_file }}"
         owner: root
@@ -56,25 +65,20 @@
         mode: "0700"
         content: |
           #!/bin/sh -e
+        force: false
+
+    - name: Manage GRUB authentication block
+      ansible.builtin.blockinfile:
+        path: "{{ grub_auth_file }}"
+        owner: root
+        group: root
+        mode: "0700"
+        marker: "# {mark} ANSIBLE MANAGED GRUB AUTH BLOCK"
+        block: |
           cat <<'EOF'
           set superusers="root"
           password_pbkdf2 root {{ grub_password_hash }}
           EOF
-      when: ansible_facts.os_family == 'RedHat'
-      no_log: true
-
-    - name: Write Ubuntu GRUB authentication script
-      ansible.builtin.copy:
-        dest: "{{ grub_auth_file }}"
-        owner: root
-        group: root
-        mode: "0700"
-        content: |
-          #!/bin/sh
-          exec tail -n +3 "$0"
-          set superusers="root"
-          password_pbkdf2 root {{ grub_password_hash }}
-      when: ansible_facts.distribution == 'Ubuntu'
       no_log: true
 
     - name: Regenerate GRUB configuration
