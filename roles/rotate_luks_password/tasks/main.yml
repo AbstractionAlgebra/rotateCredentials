@@ -1,0 +1,71 @@
+---
+- name: Discover and rotate active LUKS passphrases
+  block:
+    - name: Initialize active LUKS device list
+      ansible.builtin.set_fact:
+        luks_devices: []
+
+    - name: Discover active LUKS mappings and backing devices
+      ansible.builtin.shell: |
+        set -o pipefail
+        lsblk -nrpo NAME,TYPE,PKNAME |
+          awk '$2 == "crypt" && $3 != "" { print $1 "|" $3 }' |
+          while IFS='|' read -r mapping device; do
+            if cryptsetup status "$mapping" 2>/dev/null |
+                awk -F: '$1 ~ /^[[:space:]]*type$/ && $2 ~ /LUKS/ { found = 1 } END { exit !found }'; then
+              printf '%s|%s\n' "$mapping" "$device"
+            fi
+          done
+      args:
+        executable: /bin/bash
+      changed_when: false
+      register: luks_discovery
+
+    - name: Build active LUKS device records
+      ansible.builtin.set_fact:
+        luks_devices: >-
+          {{
+            luks_devices | default([]) +
+            [
+              {
+                'mapping': item.split('|')[0],
+                'device': item.split('|')[1]
+              }
+            ]
+          }}
+      loop: "{{ luks_discovery.stdout_lines }}"
+      when: item | length > 0
+
+    - name: Record no active LUKS devices skip
+      ansible.builtin.set_fact:
+        rotation_skips: >-
+          {{
+            rotation_skips +
+            [
+              'LUKS rotation skipped because no active LUKS mappings were discovered'
+            ]
+          }}
+      when: (luks_devices | default([])) | length == 0
+
+    - name: Rotate discovered LUKS device passphrases
+      ansible.builtin.include_tasks: rotate_one.yml
+      loop: "{{ luks_devices | default([]) }}"
+      loop_control:
+        loop_var: luks_device
+        label: "{{ luks_device.mapping }} -> {{ luks_device.device }}"
+
+  rescue:
+    - name: Record LUKS discovery failure
+      ansible.builtin.set_fact:
+        rotation_failures: >-
+          {{
+            rotation_failures +
+            [
+              'LUKS passphrase rotation failed before a device-specific ' ~
+              'rotation could run; mapping unknown backing device unknown ' ~
+              'during task: ' ~
+              (ansible_failed_task.name | default('unknown LUKS discovery task')) ~
+              '. Suggested action: verify lsblk and cryptsetup can inspect ' ~
+              'active LUKS mappings on the host, then rerun LUKS rotation.'
+            ]
+          }}

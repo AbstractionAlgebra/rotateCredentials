@@ -1,0 +1,63 @@
+---
+- name: Rotate LUKS passphrase for {{ luks_device.mapping }}
+  block:
+    - name: Add new LUKS passphrase for {{ luks_device.device }}
+      ansible.builtin.command:
+        argv:
+          - cryptsetup
+          - luksAddKey
+          - "{{ luks_device.device }}"
+        stdin: "{{ luks_credential.current }}\n{{ luks_credential.new }}\n{{ luks_credential.new }}\n"
+      no_log: true
+
+    - name: Verify new LUKS passphrase for {{ luks_device.device }}
+      ansible.builtin.command:
+        argv:
+          - cryptsetup
+          - open
+          - --test-passphrase
+          - "{{ luks_device.device }}"
+        stdin: "{{ luks_credential.new }}\n"
+      changed_when: false
+      no_log: true
+
+    - name: Remove old LUKS passphrase for {{ luks_device.device }}
+      ansible.builtin.command:
+        argv:
+          - cryptsetup
+          - luksRemoveKey
+          - "{{ luks_device.device }}"
+        stdin: "{{ luks_credential.current }}\n"
+      no_log: true
+
+    - name: Record LUKS rotation success for {{ luks_device.mapping }}
+      ansible.builtin.set_fact:
+        rotation_successes: >-
+          {{
+            rotation_successes +
+            [
+              'LUKS passphrase rotated for mapping ' ~
+              luks_device.mapping ~
+              ' backing device ' ~
+              luks_device.device
+            ]
+          }}
+
+  rescue:
+    - name: Record LUKS rotation failure for {{ luks_device.mapping }}
+      ansible.builtin.set_fact:
+        rotation_failures: >-
+          {{
+            rotation_failures +
+            [
+              'LUKS passphrase rotation failed for mapping ' ~
+              (luks_device.mapping | default('unknown')) ~
+              ' backing device ' ~
+              (luks_device.device | default('unknown')) ~
+              ' during task: ' ~
+              (ansible_failed_task.name | default('unknown LUKS password task')) ~
+              '. Suggested action: verify current/new passphrases, available ' ~
+              'LUKS keyslots, and cryptsetup status on the host before rerun; ' ~
+              'if add or verify failed, the current passphrase was not removed.'
+            ]
+          }}
