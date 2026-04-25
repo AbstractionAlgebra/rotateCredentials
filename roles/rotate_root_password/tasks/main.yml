@@ -1,0 +1,67 @@
+---
+- name: Rotate root password and enforce root aging
+  block:
+    - name: Read current root shadow aging data
+      ansible.builtin.command:
+        cmd: getent shadow root
+      changed_when: false
+      register: root_shadow_entry
+      no_log: true
+
+    - name: Determine current root max-days
+      ansible.builtin.set_fact:
+        root_password_max_days_before: "{{ (root_shadow_entry.stdout.split(':'))[4] | default('') }}"
+      no_log: true
+
+    - name: Update root account password
+      ansible.builtin.command:
+        cmd: chpasswd
+        stdin: "root:{{ root_credential.new }}"
+      no_log: true
+
+    - name: Mark root password changed today
+      ansible.builtin.command:
+        cmd: "chage -d {{ ansible_date_time.date }} root"
+      changed_when: true
+
+    - name: Ensure root password maximum age is 60 days
+      ansible.builtin.command:
+        cmd: chage -M 60 root
+      when: root_password_max_days_before != '60'
+
+    - name: Record root max-days correction warning
+      ansible.builtin.set_fact:
+        rotation_warnings: >-
+          {{
+            rotation_warnings +
+            [
+              'root password max-days was ' ~
+              (root_password_max_days_before | default('unset', true)) ~
+              '; corrected to 60'
+            ]
+          }}
+      when: root_password_max_days_before != '60'
+
+    - name: Record root password rotation success
+      ansible.builtin.set_fact:
+        rotation_successes: >-
+          {{
+            rotation_successes +
+            [
+              'root password rotated, changed date marked ' ~
+              ansible_date_time.date ~
+              ', and max-days set to 60'
+            ]
+          }}
+
+  rescue:
+    - name: Record root password rotation failure
+      ansible.builtin.set_fact:
+        rotation_failures: >-
+          {{
+            rotation_failures +
+            [
+              'root password rotation failed during task: ' ~
+              (ansible_failed_task.name | default('unknown root password task'))
+            ]
+          }}
